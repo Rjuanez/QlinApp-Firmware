@@ -1,13 +1,13 @@
 #include <Arduino.h>
-// #include <BLEDevice.h>
-// #include <BLEServer.h>
-// #include <BLE2902.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
 #include <WiFi.h>
 #include <Husarnet.h>
 #include <WebServer.h>
 
 
-//BLECharacteristic *pCharacteristic;
+BLECharacteristic *pCharacteristic;
 String comando = "";
 String cmd = "";
 volatile bool cmd_recived = false;
@@ -23,74 +23,74 @@ WebServer server(80);
 const char *hostName = "esp32-webserver";
 const char *husarnetJoinCode = "fc94:b01d:1803:8dd8:b293:5c7d:7639:932a/aqZ3kYukBCCi4FHDmngcJT";
 
-// class MyServerCallbacks : public BLEServerCallbacks {
-//   void onConnect(BLEServer* pServer) {
-//     Serial.println("Nuevo dispositivo conectado");
-//   }
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* pServer) {
+    Serial.println("Nuevo dispositivo conectado");
+  }
 
-//   void onDisconnect(BLEServer* pServer) {
-//     Serial.println("Desconectado !!!!");
-//     pServer->startAdvertising();
-//   }
-// };
+  void onDisconnect(BLEServer* pServer) {
+    Serial.println("Desconectado !!!!");
+    pServer->startAdvertising();
+  }
+};
 
-// class MyCallbacks: public BLECharacteristicCallbacks {
-//   void onWrite(BLECharacteristic *pCharacteristic) {
-//     std::string value = pCharacteristic->getValue();
-//     Serial.print("Msg recived: ");
-//     Serial.println(value.c_str());
-//     comando = String(value.c_str());
-//     int inicio = comando.indexOf('!');
-//     if(inicio != -1){
-//       int fin = comando.indexOf('$' ,inicio);
-//       if(fin != -1){
-//         cmd = comando.substring(inicio+1, fin);
-//       }
-//     }
-//     if (cmd == "Test") {
-//       digitalWrite(12, HIGH);
-//       delay(2000);
-//       digitalWrite(12, LOW);
-//     } else if (cmd.substring(0,5) = "Update"){ //!Update<ssid>;<password>$
-//         int separador_wifi_ssid = cmd.indexOf(';' ,0);
-//         strcpy(ssid, cmd.substring(6, separador_wifi_ssid).c_str());
-//         int separador_wifi_pass = cmd.indexOf(';' ,separador_wifi_ssid+1);
-//         strcpy(password, cmd.substring(separador_wifi_ssid+1, separador_wifi_pass).c_str());
-//         setup_done = true;
-//     } 
+class MyCallbacks: public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+    std::string value = pCharacteristic->getValue();
+    Serial.print("Msg recived: ");
+    Serial.println(value.c_str());
+    comando = String(value.c_str());
+    int inicio = comando.indexOf('!');
+    if(inicio != -1){
+      int fin = comando.indexOf('$' ,inicio);
+      if(fin != -1){
+        cmd = comando.substring(inicio+1, fin);
+      }
+    }
+    if (cmd == "Test") {
+      digitalWrite(12, HIGH);
+      delay(2000);
+      digitalWrite(12, LOW);
+    } else if (cmd.substring(0,5) = "Update"){ //!Update<ssid>;<password>$
+        int separador_wifi_ssid = cmd.indexOf(';' ,0);
+        strcpy(ssid, cmd.substring(6, separador_wifi_ssid).c_str());
+        int separador_wifi_pass = cmd.indexOf(';' ,separador_wifi_ssid+1);
+        strcpy(password, cmd.substring(separador_wifi_ssid+1, separador_wifi_pass).c_str());
+        setup_done = true;
+    } 
       
-//         //Extraer datos e imprimirlos:
-//           //- widi_ssid
-//           //- wifi_password
-//       cmd = "";
-//   }
-// };
+        //Extraer datos e imprimirlos:
+          //- widi_ssid
+          //- wifi_password
+      cmd = "";
+  }
+};
 
-// void initBLE() {
-//   BLEDevice::init("ESP32_BLE_Test");
-//   BLEServer *pServer = BLEDevice::createServer();
-//   pServer->setCallbacks(new MyServerCallbacks());
+void initBLE() {
+  BLEDevice::init("ESP32_BLE_Test");
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
 
-//   BLEService *pService = pServer->createService(BLEUUID("4fafc201-1fb5-459e-8fvv-c5c9c331914b"));
+  BLEService *pService = pServer->createService(BLEUUID("4fafc201-1fb5-459e-8fvv-c5c9c331914b"));
 
   
-//   pCharacteristic = pService->createCharacteristic(
-//                                          BLEUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8"),
-//                                          BLECharacteristic::PROPERTY_READ |
-//                                          BLECharacteristic::PROPERTY_WRITE
-//                                        );
+  pCharacteristic = pService->createCharacteristic(
+                                         BLEUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8"),
+                                         BLECharacteristic::PROPERTY_READ |
+                                         BLECharacteristic::PROPERTY_WRITE
+                                       );
 
-//   pCharacteristic->setCallbacks(new MyCallbacks());
+  pCharacteristic->setCallbacks(new MyCallbacks());
 
-//   pCharacteristic->addDescriptor(new BLE2902());
+  pCharacteristic->addDescriptor(new BLE2902());
 
-//   pService->start();
+  pService->start();
   
-//   //  Anunciar el servicio
-//   BLEAdvertising *pAdvertising = pServer->getAdvertising();
-//   pAdvertising->start();
-//   Serial.println("Esperando conexion BLE...");
-// }
+  //  Anunciar el servicio
+  BLEAdvertising *pAdvertising = pServer->getAdvertising();
+  pAdvertising->start();
+  Serial.println("Esperando conexion BLE...");
+}
 
 void initWifi() {
   WiFi.mode(WIFI_STA);
@@ -152,9 +152,9 @@ void setup() {
   delay(100);
   digitalWrite(12, LOW);
   //Solo se hara si no esta inicializada
-  // initBLE();
-  // while (!setup_done);
-  // BLEDevice::deinit();
+  initBLE();
+  while (!setup_done);
+  BLEDevice::deinit();
   initWifi();
   initServer();
   
