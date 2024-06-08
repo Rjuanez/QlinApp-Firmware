@@ -13,6 +13,7 @@ void setup() {
   pinMode(5, OUTPUT);
   pinMode(12, OUTPUT);
   pinMode(14, INPUT);
+  digitalWrite(5, LOW);
 }
 
 
@@ -25,7 +26,8 @@ void loop() {
       else if (val == 4) digitalWrite(12, LOW);
      //digitalWrite(val, HIGH);
   }
-  //Serial.println(digitalRead(14));
+  Serial.println(digitalRead(14));
+  delay(100);
 
   
 }

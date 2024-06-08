@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <Husarnet.h>
 #include <WebServer.h>
+#include "nvm.h"
 
 
 BLECharacteristic *pCharacteristic;
@@ -13,10 +14,12 @@ String cmd = "";
 volatile bool cmd_recived = false;
 volatile bool setup_done = false;
 unsigned char setUpIndex = 0U;
+String provisional_ssid = "";
+String provisional_pass = "";
 
 /* Wifi Variables */
-char ssid[32] = "Rub";
-char password[64] = "pepinopepino";
+// char ssid[32] = "";
+// char password[64] = "";
 
 /* Server variables */
 WebServer server(80);
@@ -51,23 +54,26 @@ class MyCallbacks: public BLECharacteristicCallbacks {
       digitalWrite(12, HIGH);
       delay(2000);
       digitalWrite(12, LOW);
-    } else if (cmd.substring(0,5) = "Update"){ //!Update<ssid>;<password>$
-        int separador_wifi_ssid = cmd.indexOf(';' ,0);
-        strcpy(ssid, cmd.substring(6, separador_wifi_ssid).c_str());
-        int separador_wifi_pass = cmd.indexOf(';' ,separador_wifi_ssid+1);
-        strcpy(password, cmd.substring(separador_wifi_ssid+1, separador_wifi_pass).c_str());
-        setup_done = true;
-    } 
-      
-        //Extraer datos e imprimirlos:
-          //- widi_ssid
-          //- wifi_password
+    }else if (cmd[0] == 'S') {
+      provisional_ssid.concat(cmd.substring(1, cmd.length()));
+      Serial.println(provisional_ssid);
+    }else if (cmd[0] == 'P') {
+      provisional_pass.concat(cmd.substring(1, cmd.length()));
+      Serial.println(provisional_pass);
+    }else if (cmd[0] == 'U') {
+      strcpy(ssid, provisional_ssid.c_str());
+      strcpy(password, provisional_pass.c_str());
+      writeWifiData();
+      setup_done = true;
+    }
       cmd = "";
   }
 };
 
 void initBLE() {
-  BLEDevice::init("ESP32_BLE_Test");
+  char buff[32];
+  sprintf(buff, "Box%d", id);
+  BLEDevice::init(buff);
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
 
@@ -105,7 +111,8 @@ void initWifi() {
 }
 
 void handleRoot() {
-  server.send(200, "text/plain", "hello from esp32!");
+  String message = "hello from " + id;
+  server.send(200, "text/plain", message);
 }
 
 void handleNotFound() {
@@ -124,13 +131,25 @@ void handleNotFound() {
 }
 
 void initServer() {
-  Husarnet.join(husarnetJoinCode, hostName);
+  char buff[12];
+  sprintf(buff, "box%d", id);
+  Husarnet.join(husarnetJoinCode, buff);
   Husarnet.start();
 
   server.on("/", handleRoot);
 
   server.on("/inline", []() {
     server.send(200, "text/plain", "this works as well");
+  });
+
+  server.on("/turnon", []() {
+    digitalWrite(5, HIGH);
+    server.send(200, "text/plain", "on");
+  });
+
+  server.on("/turnoff", []() {
+    digitalWrite(5, LOW);
+    server.send(200, "text/plain", "off");
   });
 
   server.onNotFound(handleNotFound);
@@ -140,10 +159,10 @@ void initServer() {
 }
 
 void setup() {
+  pinMode(5, OUTPUT);
   pinMode(12, OUTPUT);
-
+  digitalWrite(12, LOW);
   Serial.begin(115200);
-  Serial.println("Starting BLE work!");
   digitalWrite(12, HIGH);
   delay(100);
   digitalWrite(12, LOW);
@@ -152,11 +171,15 @@ void setup() {
   delay(100);
   digitalWrite(12, LOW);
   //Solo se hara si no esta inicializada
-  initBLE();
-  while (!setup_done);
-  BLEDevice::deinit();
-  initWifi();
-  initServer();
+  if (!initVariables()) {
+    initBLE();
+    while (!setup_done);
+    BLEDevice::deinit();
+    abort();
+  }else {
+    initWifi();
+    initServer();
+  }
   
 }
 
